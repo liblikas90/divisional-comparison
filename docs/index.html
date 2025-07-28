@@ -1,138 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Patent Divisional Comparison</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ENjdO4Dr2bkBIFxQpeo4A6VZH8+vW4UAnHroVZxF5bDbS1cF1tzvx0Pt4ckCkzNp" crossorigin="anonymous">
+    <meta charset="UTF-8">
+    <title>Divisional Patent Comparison Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap for styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f9f9f9;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 30px;
+        }
+        .card {
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+            text-align: center;
+        }
+        .section-title {
+            font-weight: 700;
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+        }
+        .highlight {
+            font-weight: bold;
+            color: #004085;
+        }
+    </style>
 </head>
 <body>
-<div class="container py-4">
-  <h2 class="mb-4">Divisional Patent Comparison Tool</h2>
+    <div class="container">
 
-  <form id="compareForm" class="mb-4">
-    <div class="mb-3">
-      <label for="basePatent" class="form-label">Base (Customer) Patent</label>
-      <input type="text" class="form-control" id="basePatent" placeholder="e.g., EP4221222" required />
+        <h1 class="text-center mb-4">Divisional Patent Comparison Tool</h1>
+
+        <!-- Input Form -->
+        <div class="card p-4">
+            <form id="compareForm">
+                <div class="row mb-3">
+                    <label for="basePatent" class="col-sm-3 col-form-label">Base (Customer) Patent:</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" id="basePatent" placeholder="EP4221222" required>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="comparePatents" class="col-sm-3 col-form-label">Divisional Patents (comma-separated):</label>
+                    <div class="col-sm-9">
+                        <input type="text" class="form-control" id="comparePatents" placeholder="EP2899982,EP3179722,EP3654650" required>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">Compare</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="mt-5 d-none">
+            <h3 class="section-title">Results for <span id="basePatentDisplay" class="highlight"></span></h3>
+
+            <table class="table table-bordered table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Patent Family</th>
+                        <th>Description</th>
+                        <th>Claims</th>
+                        <th>Total</th>
+                        <th>Ranking</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsTableBody"></tbody>
+            </table>
+
+            <h5 class="mt-4 section-title">Conclusion</h5>
+            <p id="conclusionText"></p>
+
+            <h5 class="mt-4 section-title">Breakdown</h5>
+            <div id="breakdowns"></div>
+        </div>
     </div>
-    <div class="mb-3">
-      <label for="comparePatents" class="form-label">Divisional Patents (comma-separated)</label>
-      <input type="text" class="form-control" id="comparePatents" placeholder="e.g., EP2899982, EP3179722, EP3654650" required />
-    </div>
-    <button type="submit" class="btn btn-primary">Compare</button>
-  </form>
 
-  <div id="resultsSection" class="d-none">
-    <h4>Results for <span id="baseLabel"></span></h4>
+    <!-- Bootstrap & App Script -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = 'https://59gi8v8w2m.execute-api.us-east-1.amazonaws.com/prod/compare';
 
-    <table class="table table-bordered mt-3" id="resultsTable">
-      <thead class="table-light">
-        <tr>
-          <th>Patent Family</th>
-          <th>Description</th>
-          <th>Claims</th>
-          <th>Total</th>
-          <th>Ranking</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+        document.getElementById('compareForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
 
-    <div class="mt-4 p-3 border rounded">
-      <h5><u>Conclusion</u></h5>
-      <p id="conclusionText"></p>
-    </div>
-  </div>
-</div>
+            const base = document.getElementById('basePatent').value.trim();
+            const comps = document.getElementById('comparePatents').value.trim().split(',').map(s => s.trim());
 
-<!-- Modal for breakdown -->
-<div class="modal fade" id="breakdownModal" tabindex="-1" aria-labelledby="breakdownLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="breakdownLabel">Breakdown</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body" id="breakdownBody"></div>
-    </div>
-  </div>
-</div>
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ base_patent: base, comparison_patents: comps })
+            });
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
+            const data = await res.json();
+            document.getElementById('basePatentDisplay').innerText = base;
 
-<!-- Script -->
-<script>
-  document.getElementById("compareForm").addEventListener("submit", async function (e) {
-    e.preventDefault();
+            const tbody = document.getElementById('resultsTableBody');
+            tbody.innerHTML = '';
 
-    const basePatent = document.getElementById("basePatent").value.trim();
-    const comparePatents = document.getElementById("comparePatents").value
-      .split(",")
-      .map(p => p.trim())
-      .filter(Boolean);
+            const breakdowns = document.getElementById('breakdowns');
+            breakdowns.innerHTML = '';
 
-    const res = await fetch("https://59gi8v8w2m.execute-api.us-east-1.amazonaws.com/prod/compare", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ base_patent: basePatent, comparison_patents: comparePatents }),
-    });
+            const sorted = [...data.results].sort((a, b) => a.total_word_diff - b.total_word_diff);
+            const rankingMap = Object.fromEntries(sorted.map((r, i) => [r.patent, i + 1]));
 
-    const data = await res.json();
+            let minDesc = data.results.reduce((a, b) => a.description_total_word_diff < b.description_total_word_diff ? a : b).patent;
+            let minClaims = data.results.reduce((a, b) => a.claims_total_word_diff < b.claims_total_word_diff ? a : b).patent;
+            let minOverall = sorted[0].patent;
 
-    document.getElementById("baseLabel").textContent = data.base_patent;
-    const tbody = document.querySelector("#resultsTable tbody");
-    tbody.innerHTML = "";
+            for (const r of data.results) {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${r.patent}</td>
+                        <td><a href="#break-desc-${r.patent}" class="link-primary" data-bs-toggle="collapse">${r.description_total_word_diff}</a></td>
+                        <td><a href="#break-claims-${r.patent}" class="link-primary" data-bs-toggle="collapse">${r.claims_total_word_diff}</a></td>
+                        <td>${r.total_word_diff}</td>
+                        <td>${rankingMap[r.patent]}</td>
+                    </tr>
+                `;
 
-    // Rank by total word diff
-    const sorted = [...data.results].sort((a, b) => a.total_word_diff - b.total_word_diff);
-    const ranks = sorted.map(r => r.patent);
+                breakdowns.innerHTML += `
+                    <div class="collapse mb-3" id="break-desc-${r.patent}">
+                        <div class="card card-body">
+                            <strong>Description for ${r.patent}</strong><br>
+                            Completely new words: ${r.description_completely_new_words}<br>
+                            Completely removed words: ${r.description_completely_removed_words}<br>
+                            Changed word frequency: ${r.description_changed_word_frequency}
+                        </div>
+                    </div>
+                    <div class="collapse mb-3" id="break-claims-${r.patent}">
+                        <div class="card card-body">
+                            <strong>Claims for ${r.patent}</strong><br>
+                            Completely new words: ${r.claims_completely_new_words}<br>
+                            Completely removed words: ${r.claims_completed_removed_words}<br>
+                            Changed word frequency: ${r.claims_changed_word_frequency}
+                        </div>
+                    </div>
+                `;
+            }
 
-    let bestDesc = sorted[0];
-    let bestClaims = sorted[0];
+            document.getElementById('conclusionText').innerHTML =
+                `The most similar patent in the family overall is <strong>${minOverall}</strong> with the lowest combined word difference. ` +
+                `The best match for the <strong>description</strong> section is <strong>${minDesc}</strong> and for the <strong>claims</strong> section is <strong>${minClaims}</strong>.`;
 
-    data.results.forEach((r, i) => {
-      const tr = document.createElement("tr");
-      const rank = ranks.indexOf(r.patent) + 1;
-
-      if (!bestDesc || r.description_total_word_diff < bestDesc.description_total_word_diff) bestDesc = r;
-      if (!bestClaims || r.claims_total_word_diff < bestClaims.claims_total_word_diff) bestClaims = r;
-
-      tr.innerHTML = `
-        <td>${r.patent}</td>
-        <td><a href="#" class="text-decoration-underline text-primary breakdown-link" data-type="description" data-patent="${r.patent}">${r.description_total_word_diff}</a></td>
-        <td><a href="#" class="text-decoration-underline text-primary breakdown-link" data-type="claims" data-patent="${r.patent}">${r.claims_total_word_diff}</a></td>
-        <td>${r.total_word_diff}</td>
-        <td>${rank}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-    // Bind breakdown modals
-    document.querySelectorAll(".breakdown-link").forEach(el => {
-      el.addEventListener("click", function (e) {
-        e.preventDefault();
-        const type = this.dataset.type;
-        const patent = this.dataset.patent;
-        const result = data.results.find(r => r.patent === patent);
-        let html = `
-          <strong>${type === "description" ? "Description" : "Claims"} for ${patent}</strong><br>
-          Completely new words: ${result[`${type}_completely_new_words`] || result[`${type}_completely_new_words`]}<br>
-          Completely removed words: ${result[`${type}_completely_removed_words`] || result[`${type}_completed_removed_words`]}<br>
-          Changed word frequency: ${result[`${type}_changed_word_frequency`]}
-        `;
-        document.getElementById("breakdownBody").innerHTML = html;
-        new bootstrap.Modal(document.getElementById("breakdownModal")).show();
-      });
-    });
-
-    // Conclusion
-    const cText = `The most similar patent in the family overall is <strong>${sorted[0].patent}</strong> with the lowest combined word difference.
-The best match for the <strong>description</strong> section is <strong>${bestDesc.patent}</strong> and for the <strong>claims</strong> section is <strong>${bestClaims.patent}</strong>.`;
-    document.getElementById("conclusionText").innerHTML = cText;
-
-    document.getElementById("resultsSection").classList.remove("d-none");
-  });
-</script>
+            document.getElementById('results').classList.remove('d-none');
+        });
+    </script>
 </body>
 </html>
